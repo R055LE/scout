@@ -1,0 +1,13 @@
+# Dependabot alerts and security updates are on account-wide (ADR-0005), but
+# those only react to advisories. This keeps Action pins current, which is the
+# one ecosystem every repo here has regardless of language.
+#
+# Add your language's ecosystem below when the repo has one: pip, gomod, npm,
+# terraform, docker.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5

@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Guards against committing from a repo's canonical clone while another session
+# has work in flight.
+#
+# Concurrent Claude sessions (dedicated environments, the claude-rc dashboard,
+# plain terminal sessions) share these working trees and each have their own
+# index only when they're in separate worktrees. Committing from the canonical
+# clone is how one session's staged work lands in another session's commit.
+#
+# Install: cp scripts/pre-commit-worktree-guard .git/hooks/pre-commit
+# Bypass:  ALLOW_MAIN_TREE_COMMIT=1 git commit ...
+set -euo pipefail
+
+[ "${ALLOW_MAIN_TREE_COMMIT:-}" = "1" ] && exit 0
+
+git_dir=$(git rev-parse --absolute-git-dir)
+common_dir=$(cd "$(git rev-parse --git-common-dir)" && pwd)
+
+# Linked worktrees have their own gitdir under <common>/worktrees/<name>.
+[ "$git_dir" != "$common_dir" ] && exit 0
+
+linked=$(($(git worktree list --porcelain | grep -c '^worktree ') - 1))
+
+if [ "$linked" -gt 0 ]; then
+    echo "pre-commit: BLOCKED — committing from the canonical clone while ${linked} linked worktree(s) are active." >&2
+    echo "  Another session is mid-work here. Commit from your own worktree:" >&2
+    echo "    git worktree add .claude/worktrees/<slug> -b <branch>" >&2
+    echo "  Or bypass deliberately: ALLOW_MAIN_TREE_COMMIT=1 git commit ..." >&2
+    exit 1
+fi
+
+echo "pre-commit: warning — committing from the canonical clone, not a worktree." >&2
+echo "  Fine while you're the only session. Otherwise prefer:" >&2
+echo "    git worktree add .claude/worktrees/<slug> -b <branch>" >&2
+exit 0
