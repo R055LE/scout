@@ -1,0 +1,246 @@
+{
+  "schema_version": 1,
+  "updated": "2026-09-08",
+  "_note": "Starting point, not a tuned config. Phase 1 exists to make this wrong in visible ways: read the near-miss list at the foot of each digest and edit here. Every topic needs a 'why' so a stale one reads as stale rather than as policy.",
+  "defaults": {
+    "max_age_hours": 168,
+    "min_relevance": 3,
+    "max_digest_items": 25,
+    "max_items_per_feed": 6
+  },
+  "topics": [
+    {
+      "id": "agent-control-plane",
+      "why": "routing, single-writer workflows, unattended-execution contracts, sandboxing Proper nouns added 2026-09-08: concepts miss announcements, which are named after the thing rather than describing it.",
+      "weight": 3,
+      "any": [
+        "agent harness",
+        "tool use",
+        "sandbox",
+        "single writer",
+        "agent orchestration",
+        "subagent",
+        "OpenClaw",
+        "Hermes Agent",
+        "Pi agent",
+        "Claude Code",
+        "Codex",
+        "Cursor",
+        "Devin",
+        "Aider",
+        "OpenCode",
+        "LangGraph",
+        "AutoGen",
+        "CrewAI"
+      ],
+      "none": [
+        "token price",
+        "airdrop",
+        "presale"
+      ],
+      "regex": [
+        "\\bMCP\\b",
+        "\\bagent(ic)? (workflow|loop|framework)\\b"
+      ]
+    },
+    {
+      "id": "local-inference",
+      "why": "the hardware direction: what actually runs locally and how fast Proper nouns added 2026-09-08: concepts miss announcements, which are named after the thing rather than describing it.",
+      "weight": 3,
+      "any": [
+        "local LLM",
+        "quantization",
+        "llama.cpp",
+        "vLLM",
+        "GGUF",
+        "unified memory",
+        "inference server",
+        "Ollama",
+        "LM Studio",
+        "MLX",
+        "SGLang",
+        "ExLlama",
+        "TensorRT",
+        "Strix Halo",
+        "Ryzen AI Max",
+        "DGX Spark",
+        "Medusa Halo",
+        "UDNA",
+        "Arc Pro",
+        "RTX PRO",
+        "Qwen",
+        "DeepSeek",
+        "Kimi",
+        "GLM",
+        "Mistral",
+        "Gemma"
+      ],
+      "none": [],
+      "regex": [
+        "\\bVRAM\\b",
+        "\\btokens?/s(ec)?\\b"
+      ]
+    },
+    {
+      "id": "self-hosting",
+      "why": "homelab and fleet operations, the standing interest Proper nouns added 2026-09-08: concepts miss announcements, which are named after the thing rather than describing it.",
+      "weight": 2,
+      "any": [
+        "self-hosted",
+        "homelab",
+        "systemd",
+        "docker compose",
+        "reverse proxy",
+        "NAS",
+        "Proxmox",
+        "TrueNAS",
+        "Tailscale",
+        "Caddy",
+        "Traefik",
+        "Podman",
+        "Immich",
+        "Jellyfin",
+        "Miniflux"
+      ],
+      "none": [
+        "kubernetes operator"
+      ],
+      "regex": []
+    },
+    {
+      "id": "security-boundary",
+      "why": "secrets custody, least privilege, supply chain; directly feeds secrets-broker Proper nouns added 2026-09-08: concepts miss announcements, which are named after the thing rather than describing it.",
+      "weight": 3,
+      "any": [
+        "secrets management",
+        "least privilege",
+        "supply chain",
+        "SBOM",
+        "sigstore",
+        "credential",
+        "threat model",
+        "cosign",
+        "Trivy",
+        "SOPS",
+        "Bitwarden",
+        "HashiCorp Vault",
+        "Syft",
+        "Grype"
+      ],
+      "none": [],
+      "regex": [
+        "\\bCVE-\\d{4}-\\d+\\b",
+        "\\bSLSA\\b"
+      ]
+    },
+    {
+      "id": "image-generation",
+      "why": "unexplored and iteration-bound; local generation is the strongest hardware case Proper nouns added 2026-09-08: concepts miss announcements, which are named after the thing rather than describing it.",
+      "weight": 2,
+      "any": [
+        "ComfyUI",
+        "Stable Diffusion",
+        "diffusion model",
+        "FLUX",
+        "SDXL",
+        "Midjourney",
+        "Ideogram",
+        "InvokeAI",
+        "Automatic1111",
+        "Qwen-Image",
+        "Nano Banana"
+      ],
+      "none": [],
+      "regex": []
+    }
+  ],
+  "orgs": [],
+  "authors": [],
+  "feeds": [
+    {
+      "id": "hn-front",
+      "url": "https://hnrss.org/frontpage?points=150",
+      "why": "front page with a high server-side floor; the digest should not re-read HN for me",
+      "enabled": true
+    },
+    {
+      "id": "hn-agents",
+      "url": "https://hnrss.org/newest?q=agent+OR+LLM+OR+inference&points=40",
+      "why": "keyword firehose with a floor, catches things before they hit the front page",
+      "enabled": true
+    },
+    {
+      "id": "arxiv-se",
+      "url": "https://rss.arxiv.org/rss/cs.SE",
+      "why": "software engineering papers; agent-coding evaluation work lands here",
+      "enabled": true
+    },
+    {
+      "id": "arxiv-ai",
+      "url": "https://rss.arxiv.org/rss/cs.AI",
+      "why": "broad and noisy on purpose for phase 1, expect to narrow or drop this",
+      "enabled": true
+    },
+    {
+      "id": "lobsters",
+      "url": "https://lobste.rs/t/ai,devops,practices,security.rss",
+      "why": "multi-tag feed, lower volume and higher signal than HN",
+      "enabled": true
+    },
+    {
+      "id": "lwn",
+      "url": "https://lwn.net/headlines/rss",
+      "why": "kernel and distro news; the systemd and container material is relevant",
+      "enabled": true
+    }
+  ],
+  "sources": {
+    "rss": {
+      "enabled": true
+    },
+    "github": {
+      "enabled": true,
+      "max_age_hours": 720,
+      "queries": [
+        "topic:ai-agents stars:>200 pushed:>{since}",
+        "topic:self-hosted stars:>500 pushed:>{since}"
+      ]
+    }
+  },
+  "mute": {
+    "domains": [
+      {
+        "value": "medium.com",
+        "why": "listicles; never opened one from a digest"
+      }
+    ],
+    "title_regex": [
+      {
+        "value": "(?i)^(show|ask) hn: my (first|new) ",
+        "why": "personal project announcements, low yield"
+      },
+      {
+        "value": "(?i)\\b(crypto|web3|NFT|token sale)\\b",
+        "why": "not an interest, and it dominates agent keywords"
+      },
+      {
+        "value": "(?i)^security updates for (monday|tuesday|wednesday|thursday|friday|saturday|sunday)",
+        "why": "LWN daily advisory roundup. Lists every CVE'd package, so it matches many topics at once and scored 11, the highest in its run. Breadth of mention is relevance in an article and an anti-signal in a list."
+      },
+      {
+        "value": "(?i)\\b(raises|raising) (\\$|\u20ac|\u00a3)|\\bseries [a-e]\\b|\\bfunding round\\b|\\bvaluation\\b",
+        "why": "Funding news about a named company. Proper nouns catch business coverage of the thing as well as engineering coverage; this is the business half."
+      }
+    ],
+    "url_regex": []
+  },
+  "budget": {
+    "max_requests": 25,
+    "max_bytes": 8388608,
+    "timeout_seconds": 20
+  },
+  "spend": {
+    "max_cost_usd": 0.0,
+    "max_model_calls": 0
+  }
+}

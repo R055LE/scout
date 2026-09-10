@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>cs.SE updates on arXiv.org</title>
+  <updated>2026-09-03T00:30:00Z</updated>
+  <entry>
+    <id>oai:arXiv.org:2509.01234v1</id>
+    <title>Quantization tradeoffs for local LLM inference under a VRAM ceiling</title>
+    <summary>We measure quantization effects on local LLM inference when VRAM is the binding constraint.</summary>
+    <link href="https://arxiv.org/abs/2509.01234" rel="alternate"/>
+    <updated>2026-09-02T18:00:00Z</updated>
+    <author><name>A. Researcher</name></author>
+    <category term="cs.SE"/>
+  </entry>
+  <entry>
+    <id>oai:arXiv.org:2509.05555v1</id>
+    <title>A survey of ornamental typography in medieval manuscripts</title>
+    <summary>Unrelated to anything on the watchlist.</summary>
+    <link href="https://arxiv.org/abs/2509.05555" rel="alternate"/>
+    <updated>2026-09-02T19:00:00Z</updated>
+    <author><name>B. Historian</name></author>
+    <category term="cs.DL"/>
+  </entry>
+</feed>

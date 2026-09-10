@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "updated": "2026-09-03",
+  "_note": "Test watchlist. Deliberately separate from scripts/scout-conf/watchlist.json so tuning the real one does not break CI. Keep the weights here stable; the tests assert exact relevance numbers.",
+
+  "defaults": {
+    "max_age_hours": 168,
+    "min_relevance": 3,
+    "max_digest_items": 25
+  },
+
+  "topics": [
+    {
+      "id": "agent-control-plane",
+      "why": "fixture topic, weight 3, matches on its own",
+      "weight": 3,
+      "any": ["agent harness", "sandbox", "single writer"],
+      "none": [],
+      "regex": []
+    },
+    {
+      "id": "local-inference",
+      "why": "fixture topic, weight 3",
+      "weight": 3,
+      "any": ["local LLM", "quantization"],
+      "none": [],
+      "regex": ["\\bVRAM\\b"]
+    },
+    {
+      "id": "self-hosting",
+      "why": "fixture topic, weight 2, lands exactly one below threshold to exercise near-miss",
+      "weight": 2,
+      "any": ["systemd", "self-hosted"],
+      "none": [],
+      "regex": []
+    }
+  ],
+
+  "orgs": [],
+  "authors": [],
+
+  "feeds": [
+    { "id": "hn", "url": "https://hnrss.org/frontpage?points=150", "why": "fixture", "enabled": true },
+    { "id": "arxiv", "url": "https://rss.arxiv.org/rss/cs.SE", "why": "fixture", "enabled": true }
+  ],
+
+  "sources": {
+    "rss": { "enabled": true },
+    "github": {
+      "enabled": true,
+      "max_age_hours": 720,
+      "queries": ["topic:ai-agents stars:>200 pushed:>{since}"]
+    }
+  },
+
+  "mute": {
+    "domains": [],
+    "title_regex": [
+      { "value": "(?i)\\b(crypto|token sale)\\b", "why": "fixture mute, asserted by test" }
+    ],
+    "url_regex": []
+  },
+
+  "budget": { "max_requests": 25, "max_bytes": 8388608, "timeout_seconds": 20 },
+  "spend": { "max_cost_usd": 0.0, "max_model_calls": 0 }
+}

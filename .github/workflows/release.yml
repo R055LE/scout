@@ -1,0 +1,108 @@
+name: release
+
+# Build the runtime image and publish it to GHCR on every push to main.
+# The deploy host polls ghcr.io/r055le/scout:main and redeploys when the digest changes.
+# No secrets are baked in — they're injected at runtime by `sops exec-env` on the host.
+
+on:
+  push:
+    branches: [main]
+    # Docs-only pushes don't change runtime behaviour — skip the rebuild/redeploy. GitHub runs the
+    # workflow only when a push touches at least one non-markdown path (mixed code+docs still builds).
+    paths-ignore:
+      - "**.md"
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write # provenance attestation
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Buildx
+        # docker-container driver: required for gha cache export and SBOM/provenance attestations.
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.1.2 # pin the signer; matches the verifier on the deploy host
+
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ghcr.io/${{ github.repository }} # lowercased automatically
+          tags: |
+            type=raw,value=main
+            type=sha,prefix=sha-,format=short
+
+      # Build locally first (load, no push) so Trivy can gate on it. The host pulls :main on a timer
+      # independent of this workflow, so a scan *after* push wouldn't gate anything — the image only
+      # reaches GHCR if it's clean.
+      - name: Build (load for scanning)
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          load: true
+          build-args: |
+            SCOUT_VERSION=${{ github.sha }}
+            APT_CACHE_BUST=${{ github.run_id }}
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Resolve lowercase image ref
+        id: img
+        run: |
+          repo="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "name=$repo" >> "$GITHUB_OUTPUT"
+          echo "ref=$repo:main" >> "$GITHUB_OUTPUT"
+
+      - name: Scan image (Trivy)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.img.outputs.ref }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true # only fixable vulns block a release
+          exit-code: "1"
+
+      # Cache-hit rebuild (same inputs) that pushes with attestations only after the scan passes.
+      - name: Push
+        id: push
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          push: true
+          build-args: |
+            SCOUT_VERSION=${{ github.sha }}
+            APT_CACHE_BUST=${{ github.run_id }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: true # signed build provenance attestation
+          sbom: true # SBOM attestation
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Keyless signature (Fulcio/Rekor) tied to this workflow's OIDC identity — no private key.
+      # The deploy host verifies it before running the image (see deploy/scout-deploy.sh).
+      - name: Sign image (keyless)
+        env:
+          IMAGE: ${{ steps.img.outputs.name }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: cosign sign --yes "${IMAGE}@${DIGEST}"

@@ -1,0 +1,46 @@
+# Secrets / local config — never commit real values
+.env
+.env.*
+!.env.example
+*.env
+!*.env.example
+
+# Live bot persona / server-specific config (ship an example instead)
+persona.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+uv.lock
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Build spec — workshopped locally, intentionally not published
+roger-build-spec.md
+
+# Private operational context — host-side state, deploy facts, budgets. Never committed
+# (keeps host names / ports / key paths out of the public repo). See feedback_claude_local_md_pattern.
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/worktrees/
+
+# Runtime data (sqlite db + bind-mount volume)
+data/
+*.db
+*.db-wal
+*.db-shm

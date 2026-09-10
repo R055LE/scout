@@ -1,0 +1,11 @@
+[Unit]
+Description=Pull and verify the scout image
+Documentation=https://github.com/R055LE/scout/blob/main/deploy/README.md
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+# Runs as the non-root invoking user so Docker is not driven as root.
+User=__DEPLOY_USER__
+ExecStart=/usr/local/bin/scout-deploy

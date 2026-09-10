@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Hacker News: Front Page</title>
+    <link>https://news.ycombinator.com/</link>
+    <description>Hacker News RSS</description>
+    <item>
+      <title>A sandbox for agent harness isolation</title>
+      <link>https://example.org/sandbox-agent-harness?utm_source=hn</link>
+      <description>How we isolate an agent harness per session without a container per call.</description>
+      <pubDate>Wed, 02 Sep 2026 09:14:00 +0000</pubDate>
+      <guid>https://news.ycombinator.com/item?id=41234567</guid>
+    </item>
+    <item>
+      <title>Crypto token sale for a new agent framework</title>
+      <link>https://example.org/token-sale</link>
+      <description>An agentic workflow chain with a token sale.</description>
+      <pubDate>Wed, 02 Sep 2026 10:00:00 +0000</pubDate>
+      <guid>https://news.ycombinator.com/item?id=41234568</guid>
+    </item>
+    <item>
+      <title>Notes on systemd unit ordering</title>
+      <link>https://example.org/systemd-ordering</link>
+      <description>Ordering constraints for a self-hosted service on boot.</description>
+      <pubDate>Wed, 02 Sep 2026 11:00:00 +0000</pubDate>
+      <guid>https://news.ycombinator.com/item?id=41234569</guid>
+    </item>
+    <item>
+      <title>A sandbox for agent harness isolation (mirror)</title>
+      <link>https://www.example.org/sandbox-agent-harness/</link>
+      <description>Mirror of the sandbox agent harness writeup.</description>
+      <pubDate>Wed, 02 Sep 2026 12:00:00 +0000</pubDate>
+      <guid>https://news.ycombinator.com/item?id=41234570</guid>
+    </item>
+    <item>
+      <title>An ancient post about agent harness sandbox design</title>
+      <link>https://example.org/ancient</link>
+      <description>Old sandbox agent harness material.</description>
+      <pubDate>Mon, 03 Mar 2025 08:00:00 +0000</pubDate>
+      <guid>https://news.ycombinator.com/item?id=40000001</guid>
+    </item>
+  </channel>
+</rss>

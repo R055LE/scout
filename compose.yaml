@@ -1,0 +1,21 @@
+# Scout is a batch job, not a service. Nothing runs continuously: scout-run.timer invokes
+#   docker compose run --rm scout run
+# to completion. That keeps it a named fixed operation with a documented command, inputs, outputs
+# and stop procedure, which is what the fleet's unattended-work rule requires.
+services:
+  scout:
+    image: ghcr.io/r055le/scout:main
+    init: true
+    read_only: true
+    # Batch job: never restart it, the timer decides when it runs.
+    restart: "no"
+    tmpfs:
+      - /tmp
+    volumes:
+      # Roger mounts ./data/digests read-only from its own compose file.
+      - ./data:/data
+      - ./config:/config:ro
+    environment:
+      SCOUT_TRIGGER: ${SCOUT_TRIGGER:-timer}
+      SCOUT_SEEN_TTL_DAYS: ${SCOUT_SEEN_TTL_DAYS:-180}
+    # No ports. No credential. Outbound HTTPS only, to the host allowlist compiled into the tool.

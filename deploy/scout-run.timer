@@ -1,0 +1,15 @@
+[Unit]
+Description=Produce a discovery digest for Roger to consume
+
+[Timer]
+# Roger's digest fires at 08:00 and Spark at 07:00 in the host timezone. Run well before both so a
+# fresh digest is always waiting, and once more mid-afternoon so a morning failure has a second
+# chance before the next day's post.
+OnCalendar=*-*-* 05:30
+OnCalendar=*-*-* 15:30
+# Catch up after downtime rather than silently skipping a day.
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

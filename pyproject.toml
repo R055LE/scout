@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "scout"
+version = "0.1.0"
+description = "Deterministic discovery digest: scores public feeds against an explicit watchlist and says why each item matched."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+# No runtime dependencies, deliberately. The reuse evaluation rejected feedparser
+# on update-ownership grounds and the security review rejected defusedxml for the
+# same reason; xml.etree plus an expat pre-pass covers RSS 2.0 and Atom. Revisit
+# only if the run ledger records repeated real-world parse failures.
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.1",
+    "pytest-cov==7.1.0",
+    "ruff==0.14.6",
+]
+
+[project.scripts]
+scout = "scout.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["scout"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
