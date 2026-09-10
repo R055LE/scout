@@ -1,6 +1,6 @@
 # Pinned by digest (not just the moving 3.14-slim tag) so builds are reproducible; Dependabot bumps
 # the digest + comment on a new base release. Same pin as R055LE/roger, which shares this host.
-FROM python:3.14-slim@sha256:ce40764625a4ff50df3548277632e7f96c4e77fe75fa848aae9885476e7df5a4
+FROM python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6
 
 # Non-root runtime user with a fixed uid/gid so the host can chown the bind-mounted /data to match.
 # That fixed uid is what stops a bind mount leaving root-owned files behind, which is a documented
