@@ -11,3 +11,20 @@ updates:
     schedule:
       interval: monthly
     open-pull-requests-limit: 5
+
+  # The Dockerfile pins the base image by digest, which is reproducible but goes
+  # stale silently: a Debian security patch never reaches the image until the
+  # digest moves. This is what moves it.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  # Dev-only pins (pytest, ruff, pytest-cov). There are no runtime dependencies
+  # and that is deliberate; see AGENTS.md.
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
