@@ -25,7 +25,13 @@ done
 # The data directory is bind-mounted into a container running as uid 10002. Create it owned by that
 # uid up front: letting Docker create it would make it root-owned, and then nothing without sudo can
 # clean it up. Mode 755 so Roger's container (a different uid) can read the digests.
-install -d -o 10002 -g 10002 -m 0755 /opt/scout/data /opt/scout/data/digests
+#
+# mkdir+chown, not `install -d -o -g`: uutils coreutils' install rejects a bare numeric
+# owner with no matching passwd entry, and 10002 is a container-only uid with none on the
+# host. chown accepts numeric IDs unconditionally; install does not on that implementation.
+mkdir -p /opt/scout/data /opt/scout/data/digests
+chown 10002:10002 /opt/scout/data /opt/scout/data/digests
+chmod 0755 /opt/scout/data /opt/scout/data/digests
 
 systemctl daemon-reload
 systemctl enable --now scout-deploy.timer scout-run.timer
