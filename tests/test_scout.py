@@ -254,6 +254,19 @@ class Safety(unittest.TestCase):
 
 
 class Filtering(unittest.TestCase):
+    def test_feed_can_require_more_than_global_relevance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            watchlist = json.loads(TEST_WATCHLIST.read_text())
+            watchlist["feeds"][0]["min_relevance"] = 4
+            path = pathlib.Path(tmp) / "watchlist.json"
+            path.write_text(json.dumps(watchlist))
+            with sandbox(watchlist=path) as state:
+                run()
+                titles = [item["title"] for item in latest_items(state)]
+                near_miss = latest_run(state)["totals"]["near_miss"]
+        self.assertNotIn("A sandbox for agent harness isolation", titles)
+        self.assertGreater(near_miss, 0)
+
     def test_reports_scores_and_explains(self):
         with sandbox() as state:
             code, _ = run()
@@ -330,12 +343,15 @@ class SeenState(unittest.TestCase):
           <item><title>B sandbox for agent harness B</title>
             <link>https://example.org/b</link></item>
         </channel></rss>"""
-        for cap in ("max_items_per_feed", "max_digest_items"):
+        for cap in ("max_items_per_feed", "max_digest_items", "feed_override"):
             with self.subTest(cap=cap), tempfile.TemporaryDirectory() as tmp:
                 watchlist = json.loads(TEST_WATCHLIST.read_text())
                 watchlist["feeds"] = watchlist["feeds"][:1]
                 watchlist["sources"] = {"rss": {"enabled": True}}
-                watchlist["defaults"][cap] = 1
+                if cap == "feed_override":
+                    watchlist["feeds"][0]["max_items"] = 1
+                else:
+                    watchlist["defaults"][cap] = 1
                 path = pathlib.Path(tmp) / "watchlist.json"
                 path.write_text(json.dumps(watchlist))
                 with sandbox(watchlist=path) as state:

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "updated": "2026-09-08",
-  "_note": "Starting point, not a tuned config. Phase 1 exists to make this wrong in visible ways: read the near-miss list at the foot of each digest and edit here. Every topic needs a 'why' so a stale one reads as stale rather than as policy.",
+  "updated": "2026-09-26",
+  "_note": "Tuned after reviewing 33 production runs. The near-miss list remains the recall signal. Every topic and mute keeps a reason so stale policy is visible.",
   "defaults": {
     "max_age_hours": 168,
     "min_relevance": 3,
@@ -166,20 +166,23 @@
     {
       "id": "hn-agents",
       "url": "https://hnrss.org/newest?q=agent+OR+LLM+OR+inference&points=40",
-      "why": "keyword firehose with a floor, catches things before they hit the front page",
-      "enabled": true
+      "why": "disabled after 18 failures in 33 runs and only two reported items, one off-topic; revisit if hnrss search stabilizes",
+      "enabled": false
     },
     {
       "id": "arxiv-se",
       "url": "https://rss.arxiv.org/rss/cs.SE",
-      "why": "software engineering papers; agent-coding evaluation work lands here",
-      "enabled": true
+      "why": "software engineering papers include useful agent-coding work, but this feed supplied 66 of 141 reports in 33 runs; keep two per run",
+      "enabled": true,
+      "max_items": 2
     },
     {
       "id": "arxiv-ai",
       "url": "https://rss.arxiv.org/rss/cs.AI",
-      "why": "broad and noisy on purpose for phase 1, expect to narrow or drop this",
-      "enabled": true
+      "why": "broad feed supplied 54 of 141 reports; retain cross-topic matches but cap to one paper per run",
+      "enabled": true,
+      "min_relevance": 6,
+      "max_items": 1
     },
     {
       "id": "lobsters",
