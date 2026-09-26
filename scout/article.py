@@ -10,6 +10,9 @@ from scout.page_fetch import Page
 MAX_TEXT_CHARS = 12_000
 MIN_TEXT_CHARS = 350
 _SKIP = {"head", "script", "style", "nav", "footer", "header", "aside", "form", "svg"}
+_PAYWALL_JSON = re.compile(
+    r'''["']isAccessibleForFree["']\s*:\s*(?:false|["']false["'])''', re.I
+)
 
 
 class _Text(HTMLParser):
@@ -19,9 +22,14 @@ class _Text(HTMLParser):
         self.all: list[str] = []
         self.main: list[str] = []
         self.article: list[str] = []
+        self.paywalled = False
 
     def handle_starttag(self, tag: str, attrs) -> None:
         self.stack.append(tag)
+        if tag == "meta":
+            values = {str(key).lower(): str(value or "").lower() for key, value in attrs}
+            if (values.get("itemprop") or values.get("name")) == "isaccessibleforfree":
+                self.paywalled = self.paywalled or values.get("content") == "false"
 
     def handle_endtag(self, tag: str) -> None:
         if tag in self.stack:
@@ -44,6 +52,8 @@ def extract_text(page: Page) -> str:
         html = page.body.decode("utf-8", errors="replace")
     parser = _Text()
     parser.feed(html)
+    if parser.paywalled or _PAYWALL_JSON.search(html):
+        return ""
     for chunks in (parser.article, parser.main, parser.all):
         text = re.sub(r"\s+", " ", " ".join(chunks)).strip()
         if len(text) >= MIN_TEXT_CHARS:

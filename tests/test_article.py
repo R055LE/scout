@@ -27,6 +27,21 @@ class ArticleText(unittest.TestCase):
     def test_short_page_has_no_evidence(self):
         self.assertEqual(extract_text(Page("https://example.org", b"<p>short</p>", None)), "")
 
+    def test_explicit_paywall_metadata_has_no_evidence(self):
+        body = (
+            '<meta itemprop="isAccessibleForFree" content="false">'
+            '<article><p>' + "Teaser text. " * 40 + '</p></article>'
+        ).encode()
+        self.assertEqual(extract_text(Page("https://example.org", body, None)), "")
+
+    def test_explicit_paywall_json_ld_has_no_evidence(self):
+        body = (
+            '<script type="application/ld+json">'
+            '{"isAccessibleForFree": false}</script>'
+            '<article><p>' + "Teaser text. " * 40 + '</p></article>'
+        ).encode()
+        self.assertEqual(extract_text(Page("https://example.org", body, None)), "")
+
 
 class DigestEvidence(unittest.TestCase):
     def test_digest_carries_per_item_evidence_and_matches_ledger(self):
