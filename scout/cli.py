@@ -54,6 +54,9 @@ import urllib.request
 import xml.etree.ElementTree as ET
 import xml.parsers.expat as expat
 
+from scout.article import extract_text
+from scout.page_fetch import PageFetchError, PageFetcher
+
 OPERATION = "scout-digest-v1"
 SCHEMA_VERSION = 1
 # Container-first defaults: /config is the mounted watchlist, /data the volume
@@ -637,7 +640,7 @@ def render_markdown(run: dict, reported: list[Scored], near: list[Scored], now: 
 # --------------------------------------------------------------------------
 
 
-def do_run(args, opener=None) -> int:
+def do_run(args, opener=None, page_fetcher=None) -> int:
     now = now_utc()
     state_dir = pathlib.Path(os.environ.get("SCOUT_STATE_DIR", DEFAULT_STATE_DIR))
     watch_path = pathlib.Path(
@@ -769,6 +772,27 @@ def do_run(args, opener=None) -> int:
         kept.append(s)
     reported = kept[: int(defaults.get("max_digest_items", 25))]
 
+    articles: list[dict] = []
+    article_requests = article_bytes = article_ready = 0
+    if watchlist.get("article", {}).get("enabled", False):
+        page_fetcher = page_fetcher or PageFetcher()
+        for index, scored in enumerate(reported):
+            if index >= 12:
+                articles.append({"status": "not_fetched"})
+                continue
+            try:
+                page = page_fetcher.get(scored.item.url)
+                excerpt = extract_text(page)
+                if excerpt:
+                    articles.append({"status": "ok", "url": page.url, "text": excerpt})
+                    article_ready += 1
+                else:
+                    articles.append({"status": "too_thin"})
+            except PageFetchError as exc:
+                articles.append({"status": exc.code})
+        article_requests = page_fetcher.requests
+        article_bytes = page_fetcher.bytes
+
     run = {
         "schema_version": SCHEMA_VERSION,
         "run_id": run_id,
@@ -787,6 +811,9 @@ def do_run(args, opener=None) -> int:
             "suppressed_seen": n_seen,
             "suppressed_muted": n_muted,
             "near_miss": len(near),
+            "article_ready": article_ready,
+            "article_requests": article_requests,
+            "article_bytes": article_bytes,
         },
         "spend": {
             "currency": "USD",
@@ -801,6 +828,9 @@ def do_run(args, opener=None) -> int:
         },
         "actions": list(fetcher.actions),
     }
+    if article_requests:
+        run["actions"].append({"kind": "article_fetch", "count": article_requests,
+                               "bytes": article_bytes})
 
     # The ceiling is enforced in v0 while it is zero, so any future code path
     # that makes a model call fails here immediately. A ledger that has never
@@ -812,35 +842,28 @@ def do_run(args, opener=None) -> int:
 
     digests = state_dir / "digests"
     digests.mkdir(parents=True, exist_ok=True)
+    run["exit_code"] = 1 if status == "partial" else 0
+    run["actions"].extend([
+        {"kind": "write_file", "target": str(digests / f"{run_id}.md"), "count": 1},
+        {"kind": "write_file", "target": str(digests / f"{run_id}.json"), "count": 1},
+        {"kind": "append_file", "target": str(state_dir / "seen.tsv"), "count": len(reported)},
+    ])
     markdown = render_markdown(run, reported, near, now)
     write_atomic(digests / f"{run_id}.md", markdown)
-    run["actions"].append(
-        {"kind": "write_file", "target": str(digests / f"{run_id}.md"), "count": 1}
-    )
-    # exit_code is set here rather than after the write, so the run block inside
-    # the digest matches the one appended to runs.jsonl. A consumer reading only
-    # the digest should not see a different record from one reading the ledger.
-    run["exit_code"] = 1 if status == "partial" else 0
     payload = {
         "run": run,
         "items": [
             {**dataclasses.asdict(s.item), "published": s.item.published.isoformat(),
-             "tags": list(s.item.tags), "relevance": s.relevance, "matched": s.matched}
-            for s in reported
+             "tags": list(s.item.tags), "relevance": s.relevance, "matched": s.matched,
+             **({"article": articles[index]} if articles else {})}
+            for index, s in enumerate(reported)
         ],
     }
     write_atomic(
         digests / f"{run_id}.json",
         json.dumps(payload, indent=2, sort_keys=True, default=str),
     )
-    run["actions"].append(
-        {"kind": "write_file", "target": str(digests / f"{run_id}.json"), "count": 1}
-    )
-
     save_seen(state_dir / "seen.tsv", seen, now, int(os.environ.get("SCOUT_SEEN_TTL_DAYS", 180)))
-    run["actions"].append(
-        {"kind": "append_file", "target": str(state_dir / "seen.tsv"), "count": len(reported)}
-    )
     with (state_dir / "runs.jsonl").open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(run, sort_keys=True, separators=(",", ":")) + "\n")
 
@@ -848,7 +871,7 @@ def do_run(args, opener=None) -> int:
         sys.stdout.write(markdown)
     print(
         f"scout {run_id}: {len(reported)} reported, {n_seen} seen, {n_muted} muted, "
-        f"{fetcher.requests} requests, status={status}",
+        f"{fetcher.requests} feed requests, {article_requests} page requests, status={status}",
         file=sys.stderr,
     )
     return run["exit_code"]
@@ -874,10 +897,11 @@ def do_ledger(args) -> int:
     if args.json:
         print(json.dumps(runs, indent=2))
         return 0
-    print(f"{'run':38} {'status':8} {'req':>4} {'rep':>4} {'cost':>8}")
+    print(f"{'run':38} {'status':8} {'feed':>4} {'page':>4} {'rep':>4} {'cost':>8}")
     for run in runs:
         print(
             f"{run['run_id']:38} {run['status']:8} {run['totals']['requests']:>4} "
+            f"{run['totals'].get('article_requests', 0):>4} "
             f"{run['totals']['reported']:>4} {run['spend']['estimated_cost_usd']:>8.4f}"
         )
     total = sum(r["spend"]["estimated_cost_usd"] for r in runs)
@@ -901,7 +925,7 @@ def do_check(args) -> int:
     return 0
 
 
-def main(argv=None, opener=None) -> int:
+def main(argv=None, opener=None, page_fetcher=None) -> int:
     parser = argparse.ArgumentParser(prog="scout", description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="cmd", required=True)
     run_p = sub.add_parser("run", help="fetch, filter and write one digest")
@@ -916,7 +940,7 @@ def main(argv=None, opener=None) -> int:
 
     try:
         if args.cmd == "run":
-            return do_run(args, opener=opener)
+            return do_run(args, opener=opener, page_fetcher=page_fetcher)
         if args.cmd == "latest":
             return do_latest(args)
         if args.cmd == "ledger":

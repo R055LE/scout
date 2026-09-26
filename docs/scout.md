@@ -14,11 +14,11 @@ Runs as a batch job on the deploy host: `scout-run.timer` invokes
 | Argument | `run`, no other arguments |
 | Working directory | `/opt/scout` |
 | Inputs | `/config/watchlist.json`, mounted read-only |
-| Network | outbound HTTPS GET only, to `HOST_ALLOWLIST` in `scout/cli.py` |
+| Network | allowlisted HTTPS feed GETs; bounded public HTTP(S) HTML GETs for linked pages |
 | Credentials | **none** |
 | Outputs | `/data/{digests/,seen.tsv,runs.jsonl}` |
-| Resources | 25 requests, 8 MiB, 20 s per request, all from `budget` |
-| Timeout | per request; no global wall clock yet |
+| Resources | feed budget: 25 requests, 8 MiB, 20 s each; article budget: first 12 reported items, 24 requests, 1 MiB/page, 12 MiB total, 10 s/request |
+| Timeout | article stage: 120 s deadline; whole systemd job: 12 min |
 | Stop | `systemctl stop scout-run.service`, or let the run finish |
 
 It holds no credential, mutates no repository or remote service, and writes
@@ -103,6 +103,17 @@ and a `spend` block.
 
 `digests/<run_id>.json` is the **consumer contract**, described below.
 
+The optional `article` block in the watchlist enables source evidence. Scout reads
+up to twelve reported links per run and adds an `article` block to each item:
+`{"status":"ok","url":"...","text":"..."}` on success, or a status code on
+failure. The text is extracted from public HTML and capped at 12,000 characters.
+PDFs, paywalls, script-only pages, and pages without enough readable text stay
+in the discovery digest but cannot support a detailed Roger post. Page errors
+do not turn a valid feed run into a partial run. Links are resolved at each hop,
+checked for public addresses, and connected by pinned address with TLS
+verification against the original hostname. No proxy, cookie, login, or script
+execution is used.
+
 **The spend ceiling is enforced now, while it is zero.** Any code path that ever
 makes a model call breaches `max_model_calls: 0` and refuses. A ledger that has
 never been able to fail is not instrumentation, so `test-scout` mutation-tests
@@ -129,7 +140,8 @@ its own feed plumbing.
                "relevance": 3,
                "matched": [ {"topic": "...", "term": "...", "field": "text"} ],
                "summary": "...", "tags": [], "author": "",
-               "source_score": 0, "native_id": "...", "extra": {"feed": "..."} } ]
+               "source_score": 0, "native_id": "...", "extra": {"feed": "..."},
+               "article": {"status": "ok", "url": "...", "text": "..."} } ]
 }
 ```
 
@@ -141,6 +153,8 @@ Guarantees a consumer may rely on, each asserted in `test-scout`:
   entry of a sorted glob. No index file to keep consistent.
 - **Every item carries every contract field**, including `matched`, so a
   consumer can show why an item surfaced without re-deriving it.
+- **`article` is optional** for old digests and when source reading is disabled;
+  a consumer requiring page evidence accepts only `status: ok` with text.
 - **The embedded `run` block matches the `runs.jsonl` record** for the same
   `run_id`, `exit_code` included. Reading the digest and reading the ledger give
   the same answer.

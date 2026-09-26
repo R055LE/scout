@@ -207,6 +207,9 @@
       ]
     }
   },
+  "article": {
+    "enabled": true
+  },
   "mute": {
     "domains": [
       {
