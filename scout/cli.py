@@ -464,6 +464,11 @@ def load_watchlist(path: pathlib.Path) -> tuple[dict, str]:
     for source_id in watchlist.get("sources", {}):
         if source_id not in ADAPTERS:
             raise Refusal(f"unknown source id: {source_id}")
+    for feed in watchlist.get("feeds", []):
+        for name in ("min_relevance", "max_items"):
+            value = feed.get(name)
+            if value is not None and (type(value) is not int or value < 1):
+                raise Refusal(f"feed {feed.get('id')!r} {name} must be a positive integer")
     for topic in watchlist.get("topics", []):
         for pattern in topic.get("regex", []):
             try:
@@ -649,6 +654,7 @@ def do_run(args, opener=None) -> int:
     budget = watchlist.get("budget", {})
     spend_cfg = watchlist.get("spend", {})
     min_relevance = int(defaults.get("min_relevance", 3))
+    feed_policies = {feed["id"]: feed for feed in watchlist.get("feeds", [])}
     max_age = int(defaults.get("max_age_hours", 168))
 
     fetcher = Fetcher(budget, opener=opener)
@@ -719,7 +725,8 @@ def do_run(args, opener=None) -> int:
             n_muted += 1
             continue
         relevance, matched = score(item, watchlist)
-        if relevance >= min_relevance:
+        feed = feed_policies.get(item.extra.get("feed"), {})
+        if relevance >= max(min_relevance, feed.get("min_relevance", min_relevance)):
             n_matched += 1
         elif relevance > 0:
             # Anything that matched *something* but not enough. Deliberately
@@ -752,7 +759,8 @@ def do_run(args, opener=None) -> int:
     counts: dict[str, int] = {}
     for s in reported:
         group = s.item.extra.get("feed", s.item.source)
-        if counts.get(group, 0) >= per_feed:
+        feed_cap = min(per_feed, feed_policies.get(group, {}).get("max_items", per_feed))
+        if counts.get(group, 0) >= feed_cap:
             continue
         counts[group] = counts.get(group, 0) + 1
         kept.append(s)
