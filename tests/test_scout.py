@@ -323,6 +323,29 @@ class Filtering(unittest.TestCase):
 
 
 class SeenState(unittest.TestCase):
+    def test_items_dropped_by_caps_can_be_reported_next_run(self):
+        feed = b"""<rss><channel>
+          <item><title>A sandbox for agent harness A</title>
+            <link>https://example.org/a</link></item>
+          <item><title>B sandbox for agent harness B</title>
+            <link>https://example.org/b</link></item>
+        </channel></rss>"""
+        for cap in ("max_items_per_feed", "max_digest_items"):
+            with self.subTest(cap=cap), tempfile.TemporaryDirectory() as tmp:
+                watchlist = json.loads(TEST_WATCHLIST.read_text())
+                watchlist["feeds"] = watchlist["feeds"][:1]
+                watchlist["sources"] = {"rss": {"enabled": True}}
+                watchlist["defaults"][cap] = 1
+                path = pathlib.Path(tmp) / "watchlist.json"
+                path.write_text(json.dumps(watchlist))
+                with sandbox(watchlist=path) as state:
+                    for _ in range(2):
+                        run({"https://hnrss.org/": feed})
+                        self.assertEqual(latest_run(state)["totals"]["reported"], 1)
+                    seen = scout.load_seen(state / "seen.tsv")
+                    self.assertIn("url:https://example.org/a", seen)
+                    self.assertIn("url:https://example.org/b", seen)
+
     def test_second_run_reports_nothing_then_reset_restores(self):
         with sandbox() as state:
             run()

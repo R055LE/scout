@@ -740,17 +740,6 @@ def do_run(args, opener=None) -> int:
             continue
         collapsed.add(url_key)
         reported.append(Scored(item, relevance, matched))
-        row = {
-            "first_seen": stamp,
-            "last_seen": stamp,
-            "source": item.source,
-            "title_prefix": item.title[:60].replace("\t", " "),
-        }
-        # Record the native id *and* the normalized URL. A mirror of the same
-        # story carries a different native id, so keying on that alone lets the
-        # duplicate we collapsed today come back tomorrow as a fresh item.
-        seen[key] = row
-        seen[url_key] = dict(row)
 
     reported.sort(key=lambda s: (-s.relevance, s.item.title))
 
@@ -768,6 +757,19 @@ def do_run(args, opener=None) -> int:
         counts[group] = counts.get(group, 0) + 1
         kept.append(s)
     reported = kept[: int(defaults.get("max_digest_items", 25))]
+
+    for scored in reported:
+        item = scored.item
+        row = {
+            "first_seen": stamp,
+            "last_seen": stamp,
+            "source": item.source,
+            "title_prefix": item.title[:60].replace("\t", " "),
+        }
+        # Record only emitted items. A capped-out item must remain eligible
+        # tomorrow. The native id and normalized URL suppress later mirrors.
+        seen[seen_key(item)] = row
+        seen[f"url:{normalize_url(item.url)}"] = dict(row)
 
     run = {
         "schema_version": SCHEMA_VERSION,
