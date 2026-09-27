@@ -200,6 +200,14 @@ reads as stale rather than as policy.
 it the highest-volume source wins on volume alone: the first capped run cut
 arXiv's share from 23 items to 6.
 
+An individual RSS feed may set a higher `min_relevance` or a lower `max_items`
+than those defaults. Scout's September 2026 review of 33 production runs found
+120 of 141 reported items came from the two arXiv feeds, while the HN agent
+search feed failed in 18 runs and contributed only two items. The watchlist now
+requires a cross-topic score from broad `arxiv-ai`, limits both arXiv feeds,
+and disables the failing HN search. Capped-out items remain eligible in a later
+run; they are marked seen only when emitted.
+
 ## Local tests
 
 ```sh

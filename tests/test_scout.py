@@ -254,6 +254,19 @@ class Safety(unittest.TestCase):
 
 
 class Filtering(unittest.TestCase):
+    def test_feed_can_require_more_than_global_relevance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            watchlist = json.loads(TEST_WATCHLIST.read_text())
+            watchlist["feeds"][0]["min_relevance"] = 4
+            path = pathlib.Path(tmp) / "watchlist.json"
+            path.write_text(json.dumps(watchlist))
+            with sandbox(watchlist=path) as state:
+                run()
+                titles = [item["title"] for item in latest_items(state)]
+                near_miss = latest_run(state)["totals"]["near_miss"]
+        self.assertNotIn("A sandbox for agent harness isolation", titles)
+        self.assertGreater(near_miss, 0)
+
     def test_reports_scores_and_explains(self):
         with sandbox() as state:
             code, _ = run()
@@ -323,6 +336,32 @@ class Filtering(unittest.TestCase):
 
 
 class SeenState(unittest.TestCase):
+    def test_items_dropped_by_caps_can_be_reported_next_run(self):
+        feed = b"""<rss><channel>
+          <item><title>A sandbox for agent harness A</title>
+            <link>https://example.org/a</link></item>
+          <item><title>B sandbox for agent harness B</title>
+            <link>https://example.org/b</link></item>
+        </channel></rss>"""
+        for cap in ("max_items_per_feed", "max_digest_items", "feed_override"):
+            with self.subTest(cap=cap), tempfile.TemporaryDirectory() as tmp:
+                watchlist = json.loads(TEST_WATCHLIST.read_text())
+                watchlist["feeds"] = watchlist["feeds"][:1]
+                watchlist["sources"] = {"rss": {"enabled": True}}
+                if cap == "feed_override":
+                    watchlist["feeds"][0]["max_items"] = 1
+                else:
+                    watchlist["defaults"][cap] = 1
+                path = pathlib.Path(tmp) / "watchlist.json"
+                path.write_text(json.dumps(watchlist))
+                with sandbox(watchlist=path) as state:
+                    for _ in range(2):
+                        run({"https://hnrss.org/": feed})
+                        self.assertEqual(latest_run(state)["totals"]["reported"], 1)
+                    seen = scout.load_seen(state / "seen.tsv")
+                    self.assertIn("url:https://example.org/a", seen)
+                    self.assertIn("url:https://example.org/b", seen)
+
     def test_second_run_reports_nothing_then_reset_restores(self):
         with sandbox() as state:
             run()

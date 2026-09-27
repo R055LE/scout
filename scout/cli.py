@@ -467,6 +467,11 @@ def load_watchlist(path: pathlib.Path) -> tuple[dict, str]:
     for source_id in watchlist.get("sources", {}):
         if source_id not in ADAPTERS:
             raise Refusal(f"unknown source id: {source_id}")
+    for feed in watchlist.get("feeds", []):
+        for name in ("min_relevance", "max_items"):
+            value = feed.get(name)
+            if value is not None and (type(value) is not int or value < 1):
+                raise Refusal(f"feed {feed.get('id')!r} {name} must be a positive integer")
     for topic in watchlist.get("topics", []):
         for pattern in topic.get("regex", []):
             try:
@@ -652,6 +657,7 @@ def do_run(args, opener=None, page_fetcher=None) -> int:
     budget = watchlist.get("budget", {})
     spend_cfg = watchlist.get("spend", {})
     min_relevance = int(defaults.get("min_relevance", 3))
+    feed_policies = {feed["id"]: feed for feed in watchlist.get("feeds", [])}
     max_age = int(defaults.get("max_age_hours", 168))
 
     fetcher = Fetcher(budget, opener=opener)
@@ -722,7 +728,8 @@ def do_run(args, opener=None, page_fetcher=None) -> int:
             n_muted += 1
             continue
         relevance, matched = score(item, watchlist)
-        if relevance >= min_relevance:
+        feed = feed_policies.get(item.extra.get("feed"), {})
+        if relevance >= max(min_relevance, feed.get("min_relevance", min_relevance)):
             n_matched += 1
         elif relevance > 0:
             # Anything that matched *something* but not enough. Deliberately
@@ -743,17 +750,6 @@ def do_run(args, opener=None, page_fetcher=None) -> int:
             continue
         collapsed.add(url_key)
         reported.append(Scored(item, relevance, matched))
-        row = {
-            "first_seen": stamp,
-            "last_seen": stamp,
-            "source": item.source,
-            "title_prefix": item.title[:60].replace("\t", " "),
-        }
-        # Record the native id *and* the normalized URL. A mirror of the same
-        # story carries a different native id, so keying on that alone lets the
-        # duplicate we collapsed today come back tomorrow as a fresh item.
-        seen[key] = row
-        seen[url_key] = dict(row)
 
     reported.sort(key=lambda s: (-s.relevance, s.item.title))
 
@@ -766,7 +762,8 @@ def do_run(args, opener=None, page_fetcher=None) -> int:
     counts: dict[str, int] = {}
     for s in reported:
         group = s.item.extra.get("feed", s.item.source)
-        if counts.get(group, 0) >= per_feed:
+        feed_cap = min(per_feed, feed_policies.get(group, {}).get("max_items", per_feed))
+        if counts.get(group, 0) >= feed_cap:
             continue
         counts[group] = counts.get(group, 0) + 1
         kept.append(s)
@@ -792,6 +789,19 @@ def do_run(args, opener=None, page_fetcher=None) -> int:
                 articles.append({"status": exc.code})
         article_requests = page_fetcher.requests
         article_bytes = page_fetcher.bytes
+
+    for scored in reported:
+        item = scored.item
+        row = {
+            "first_seen": stamp,
+            "last_seen": stamp,
+            "source": item.source,
+            "title_prefix": item.title[:60].replace("\t", " "),
+        }
+        # Record only emitted items. A capped-out item must remain eligible
+        # tomorrow. The native id and normalized URL suppress later mirrors.
+        seen[seen_key(item)] = row
+        seen[f"url:{normalize_url(item.url)}"] = dict(row)
 
     run = {
         "schema_version": SCHEMA_VERSION,
