@@ -6,6 +6,7 @@ Requires=docker.service
 
 [Service]
 Type=oneshot
+TimeoutStartSec=12min
 # Runs as the non-root invoking user so Docker is not driven as root.
 User=__DEPLOY_USER__
 ExecStart=/usr/local/bin/scout-run

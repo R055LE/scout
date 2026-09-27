@@ -29,8 +29,9 @@ means every future consumer has to go through Discord to reach the data.
 
 ## Shape
 
-No credential. No daemon. No listening socket. Outbound HTTPS only, to a host
-allowlist compiled into the tool, and it writes only to its own data directory.
+No credential. No daemon. No listening socket. Feed requests use a compiled
+HTTPS host allowlist; source evidence uses bounded public HTTP(S) page reads.
+It writes only to its own data directory.
 Removing it is deleting a container, a timer and a directory.
 
 Two adapters cover every source: `rss` handles RSS 2.0 and Atom, which is enough
