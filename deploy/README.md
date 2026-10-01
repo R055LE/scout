@@ -32,6 +32,12 @@ workflow's OIDC identity before the image is ever used. `set -e` means a bad or
 missing signature aborts. Fail closed. cosign must be on `PATH` for the systemd
 unit, so install it to `/usr/local/bin`.
 
+Image pruning belongs in coordinated host maintenance. On a shared Docker
+daemon, cleanup must hold every image consumer's project lock so it cannot
+overlap a pull or Scout run. Updating this repository does not update
+`/usr/local/bin/scout-deploy`; explicitly reinstall the approved host-side
+script before relying on a control change.
+
 ## Checking on it
 
 ```sh

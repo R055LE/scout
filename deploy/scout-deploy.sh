@@ -24,6 +24,3 @@ cosign verify \
   --certificate-identity "$COSIGN_IDENTITY" \
   --certificate-oidc-issuer "$COSIGN_ISSUER" \
   "$IMAGE" >/dev/null
-
-echo "scout-deploy: pruning superseded images"
-docker image prune -f >/dev/null
